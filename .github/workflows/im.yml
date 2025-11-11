@@ -49,7 +49,7 @@ jobs:
       - name: Find firmware
         id: find_file
         run: |
-          FILE_PATH=$(find bin/targets -type f -name "onecloud-immortalwrt-ext4-emmc-burn.img.xz" | head -n 1)
+          FILE_PATH=$(find bin/targets/armsr/armv7 -type f -name "onecloud-immortalwrt-ext4-emmc-burn.img.xz" | head -n 1)
           echo "file_path=$FILE_PATH" >> $GITHUB_OUTPUT
           if [ -z "$FILE_PATH" ]; then
             echo "❌ 没找到 onecloud-immortalwrt-ext4-emmc-burn.img.xz"
