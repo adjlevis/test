@@ -89,7 +89,9 @@ if [ -z "$SRC_IMG" ]; then
 fi
 
 # === 复制并改名为 workflow 能识别的文件名（保持 .gz 后缀即可） ===
-DST_IMG=$(dirname "$SRC_IMG")/onecloud-immortalwrt-ext4-emmc-burn.img.xz
+DST_IMG=$(dirname "$SRC_IMG")/onecloud-immortalwrt-ext4-emmc-burn.img.gz
 cp "$SRC_IMG" "$DST_IMG"
 
 echo "✅ 已生成 workflow 可识别的文件：$DST_IMG"
+
+
