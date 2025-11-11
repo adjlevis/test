@@ -1,88 +1,81 @@
 #!/bin/bash
 set -euxo pipefail
 
-echo "🚀 开始准备构建环境..."
+# =============================
+# ImmortalWrt 自定义快速构建脚本
+# 支持 OneCloud 自动扩展 overlay 分区
+# 默认 root 无密码，IP 192.168.2.2
+# =============================
 
-# 更新 feeds
-./scripts/feeds update -a
-./scripts/feeds install -a
-
-# 清理旧缓存
-make clean || true
-rm -rf tmp/ || true
-
-# ===============================
-# 自定义安装包（旁路由优化，无 PPP）
-# ===============================
+# 自定义要安装的包
 PACKAGES=""
-PACKAGES="$PACKAGES curl wget ca-certificates"
-PACKAGES="$PACKAGES luci luci-base luci-compat luci-app-firewall"
-PACKAGES="$PACKAGES luci-i18n-base-zh-cn luci-i18n-firewall-zh-cn luci-i18n-package-manager-zh-cn"
-PACKAGES="$PACKAGES luci-app-docker luci-app-ttyd luci-app-filebrowser"
-PACKAGES="$PACKAGES luci-app-opkg openssh-sftp-server"
-PACKAGES="$PACKAGES kmod-usb-storage block-mount e2fsprogs fdisk"
+PACKAGES="$PACKAGES curl"
+PACKAGES="$PACKAGES luci-i18n-base-zh-cn"
+PACKAGES="$PACKAGES luci-i18n-firewall-zh-cn"
+PACKAGES="$PACKAGES luci-i18n-package-manager-zh-cn"
+PACKAGES="$PACKAGES luci luci-app-opkg luci-app-docker luci-app-openclash luci-app-ttyd luci-app-filebrowser luci-app-nikki"
 
-# ===============================
-# 写入自动扩容脚本
-# ===============================
-mkdir -p files/etc/init.d
-cat > files/etc/init.d/expand_rootfs <<'EOF'
+# 根分区大小（单位 MB）
+ROOTFS_PARTSIZE="512"
+
+# 创建自定义文件结构
+mkdir -p files/etc/init.d/
+mkdir -p files/etc/config/
+
+# === 设置 LAN 默认 IP 为 192.168.2.2 ===
+cat > files/etc/config/network <<'EOF'
+config interface 'lan'
+	option ifname 'eth0'
+	option proto 'static'
+	option ipaddr '192.168.2.2'
+	option netmask '255.255.255.0'
+	option gateway '192.168.2.1'
+	option dns '223.5.5.5'
+EOF
+
+# === 设置 root 密码为空 ===
+mkdir -p files/etc
+cat > files/etc/shadow <<'EOF'
+root::0:0:99999:7:::
+EOF
+
+# === 添加自动扩展 overlay 分区脚本 ===
+cat > files/etc/init.d/expand-overlay <<'EOF'
 #!/bin/sh /etc/rc.common
+# 自动扩展 overlay 分区，仅首次启动执行
 START=99
-DESCRIPTION="Auto expand root filesystem on first boot"
+STOP=10
 
 start() {
-    if [ ! -f /etc/expand_done ]; then
-        echo "🔧 自动扩展 eMMC 分区..."
-        parted /dev/mmcblk1 resizepart 2 100%
-        losetup /dev/loop0 /dev/mmcblk1p2
-        e2fsck -f -y /dev/loop0
-        resize2fs -f /dev/loop0
-        sync
-        echo "✅ 扩展完成，重启生效..."
-        touch /etc/expand_done
-        reboot
+    if [ -f /etc/expanded_done ]; then
+        exit 0
     fi
+
+    echo "开始扩展 overlay 分区..."
+    parted /dev/mmcblk1 resizepart 2 100%
+    losetup /dev/loop0 /dev/mmcblk1p2
+    e2fsck -f -y /dev/loop0
+    resize2fs -f /dev/loop0
+    sync
+
+    # 扩展 Docker 存储目录
+    [ -d /opt/docker ] || mkdir -p /opt/docker
+    mount -o bind /overlay/docker /opt/docker
+
+    touch /etc/expanded_done
+    echo "扩展完成，下次启动不再执行。"
+    reboot
 }
 EOF
-chmod +x files/etc/init.d/expand_rootfs
 
-# ===============================
-# 构建镜像（调大分区空间）
-# ===============================
-echo "🧱 开始构建镜像..."
-make image \
-  PACKAGES="$PACKAGES" \
-  FILES="files" \
-  ROOTFS_PARTSIZE="1024" \
-  V=s
+chmod +x files/etc/init.d/expand-overlay
 
-# ===============================
-# 压缩线刷包
-# ===============================
-OUTPUT_IMG=$(find bin/targets/ -name "*emmc-burn.img" | head -n 1)
-if [ -f "$OUTPUT_IMG" ]; then
-  echo "📦 压缩线刷包..."
-  xz -T0 -z -9 "$OUTPUT_IMG"
-  mv "${OUTPUT_IMG}.xz" "onecloud-immortalwrt-ext4-emmc-burn.img.xz"
-fi
+# === 执行构建 ===
+echo "🚀 开始构建镜像..."
+make image PACKAGES="$PACKAGES" FILES="files" ROOTFS_PARTSIZE="$ROOTFS_PARTSIZE"
 
-# ===============================
-# 生成更新说明
-# ===============================
-mkdir -p ../release_note
-cat > ../release_note/update.txt <<EOF
-🆕 本次更新内容：
-- 移除 PPPoE 拨号模块（ppp、ppp-mod-pppoe）
-- 适配旁路由（DHCP 模式）
-- 自动扩展 eMMC 剩余空间
-- 新增插件：
-  • luci-app-docker
-  • luci-app-ttyd
-  • luci-app-filebrowser
-- 默认密码为空
-EOF
-
-echo "✅ 构建完成！"
-echo "📁 输出文件: onecloud-immortalwrt-ext4-emmc-burn.img.xz"
-echo "📝 更新说明: release_note/update.txt"
+echo "🎉 构建完成！镜像已包含以下自定义功能："
+echo " - 默认 IP: 192.168.2.2"
+echo " - root 密码为空（直接登录）"
+echo " - 自动扩展 overlay 分区（首次启动自动执行）"
+echo " - 预装插件: luci、docker、openclash、ttyd、filebrowser、nikki 等"
