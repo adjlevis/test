@@ -12,6 +12,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: immortalwrt   # ✅ 所有命令默认在 immortalwrt 目录下执行
+
     steps:
       - name: 🧩 Checkout repository
         uses: actions/checkout@v4
@@ -25,7 +29,7 @@ jobs:
         run: |
           chmod +x docker-build.sh build.sh
           mkdir -p bin files
-          sudo chmod -R 777 bin files
+          sudo chmod -R 777 bin files files build.sh docker-build.sh
 
       - name: 🐋 Pull ImmortalWrt ImageBuilder
         run: docker pull immortalwrt/imagebuilder:armsr-armv7-openwrt-24.10
@@ -45,7 +49,7 @@ jobs:
         run: |
           {
             echo 'files<<EOF'
-            ls -1 | grep -E 'onecloud-.*\.img\.xz' || echo "无固件文件"
+            ls -1 bin/ | grep -E 'onecloud-.*\.img\.xz' || echo "无固件文件"
             echo 'EOF'
           } >> $GITHUB_OUTPUT
 
@@ -56,10 +60,10 @@ jobs:
           name: "OneCloud ImmortalWrt 固件自动构建"
           body: |
             ✅ OneCloud 固件构建完成！
-            
+
             - 构建时间（北京时间）：${{ steps.time.outputs.datetime_readable }}
             - 构建编号：${{ github.run_number }}
-            
+
             本次更新内容：
             ```
             $(cat release_note/update.txt)
@@ -67,7 +71,7 @@ jobs:
 
             💾 固件文件：
             ${{ steps.list_files.outputs.files }}
-          files: onecloud-immortalwrt-ext4-emmc-burn.img.xz
+          files: immortalwrt/bin/onecloud-immortalwrt-ext4-emmc-burn.img.xz
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
