@@ -13,7 +13,7 @@ PACKAGES="$PACKAGES curl"
 PACKAGES="$PACKAGES luci-i18n-base-zh-cn"
 PACKAGES="$PACKAGES luci-i18n-firewall-zh-cn"
 PACKAGES="$PACKAGES luci-i18n-package-manager-zh-cn"
-PACKAGES="$PACKAGES luci luci-app-opkg luci-app-docker luci-app-openclash luci-app-ttyd luci-app-filebrowser luci-app-nikki"
+PACKAGES="$PACKAGES luci luci-app-opkg luci-app-docker luci-app-ttyd luci-app-filebrowser "
 
 # 根分区大小（单位 MB）
 ROOTFS_PARTSIZE="512"
@@ -79,3 +79,4 @@ echo " - 默认 IP: 192.168.2.2"
 echo " - root 密码为空（直接登录）"
 echo " - 自动扩展 overlay 分区（首次启动自动执行）"
 echo " - 预装插件: luci、docker、openclash、ttyd、filebrowser、nikki 等"
+
