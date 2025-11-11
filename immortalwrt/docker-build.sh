@@ -3,17 +3,15 @@ set -euxo pipefail
 
 WORKDIR=$(pwd)
 
-echo "🚀 开始准备构建环境..."
-
-docker run --rm --user root \
-  -v "${WORKDIR}":/home/build/immortalwrt \
-  -w /home/build/immortalwrt \
+docker run --rm \
+  --user root \
+  -v "$WORKDIR/bin:/home/build/immortalwrt/bin" \
+  -v "$WORKDIR/files:/home/build/immortalwrt/files" \
+  -v "$WORKDIR/build.sh:/home/build/immortalwrt/build.sh" \
   immortalwrt/imagebuilder:armsr-armv7-openwrt-24.10 \
-  bash -c "
-    set -euxo pipefail
-    echo '🚀 更新 feeds...'
-    ./scripts/feeds update -a
-    ./scripts/feeds install -a
-    echo '🚀 开始编译固件...'
-    bash ./build.sh
-  "
+  /home/build/immortalwrt/build.sh
+
+# ✅ 修复权限 & 调试输出
+sudo chmod -R 777 bin || true
+echo "=== Bin 目录内容 ==="
+ls -R bin || true
