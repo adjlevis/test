@@ -17,11 +17,9 @@ jobs:
         working-directory: immortalwrt
 
     steps:
-      # 1️⃣ 检出代码
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ 准备环境
       - name: Prepare build environment
         run: |
           sed -i 's/\r$//' build.sh docker-build.sh || true
@@ -29,15 +27,9 @@ jobs:
           mkdir -p bin files
           sudo chmod -R 777 bin files
 
-      # 3️⃣ 拉取镜像构建
-      - name: Pull ImmortalWrt ImageBuilder
-        run: docker pull immortalwrt/imagebuilder:armsr-armv7-openwrt-24.10
-
-      # 4️⃣ 编译固件
       - name: Build firmware
         run: ./docker-build.sh
 
-      # 5️⃣ 获取北京时间
       - name: Get Beijing Time
         id: time
         run: |
@@ -45,7 +37,6 @@ jobs:
           echo "datetime=$(date '+%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
           echo "datetime_readable=$(date '+%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_OUTPUT
 
-      # 6️⃣ 查找目标固件文件（线刷包）
       - name: Find firmware
         id: find_file
         run: |
@@ -56,13 +47,11 @@ jobs:
             exit 1
           fi
 
-      # 7️⃣ 压缩源码归档
       - name: Archive source code
         run: |
           cd ..
           tar -czf immortalwrt-source-${{ steps.time.outputs.datetime }}.tar.gz immortalwrt
 
-      # 8️⃣ 创建 Release
       - name: Publish to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -70,16 +59,9 @@ jobs:
           name: "Onecloud Immortalwrt 更新版"
           body: |
             ✅ Onecloud Immortalwrt 自动构建完成！
-
             - 内核版本：24.10
             - 发布时间（北京时间）：${{ steps.time.outputs.datetime_readable }}
-
-            📦 本次更新内容：
-            - 新增功能或插件请在构建脚本中描述（build.sh）
-            - 默认登录密码：空密码（root 直接回车）
-            - 仅提供线刷包 + 源码压缩包
-
-            💾 文件说明：
+            📦 文件说明：
             - onecloud-immortalwrt-ext4-emmc-burn.img.xz ：线刷包
             - immortalwrt-source-${{ steps.time.outputs.datetime }}.tar.gz ：源码归档
           files: |
@@ -89,7 +71,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 9️⃣ 仅保留最新 1 个 Release
       - name: Delete older releases
         if: github.ref == 'refs/heads/main'
         uses: dev-drprasad/delete-older-releases@v0.3.3
