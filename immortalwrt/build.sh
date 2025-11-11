@@ -12,7 +12,7 @@ make clean || true
 rm -rf tmp/ || true
 
 # ===============================
-# 自定义安装包（无 PPP 组件）
+# 自定义安装包（旁路由优化，无 PPP）
 # ===============================
 PACKAGES=""
 PACKAGES="$PACKAGES curl wget ca-certificates"
@@ -58,12 +58,13 @@ make image \
   V=s
 
 # ===============================
-# 压缩并发布
+# 压缩线刷包
 # ===============================
 OUTPUT_IMG=$(find bin/targets/ -name "*emmc-burn.img" | head -n 1)
 if [ -f "$OUTPUT_IMG" ]; then
   echo "📦 压缩线刷包..."
   xz -T0 -z -9 "$OUTPUT_IMG"
+  mv "${OUTPUT_IMG}.xz" "onecloud-immortalwrt-ext4-emmc-burn.img.xz"
 fi
 
 # ===============================
@@ -72,16 +73,16 @@ fi
 mkdir -p ../release_note
 cat > ../release_note/update.txt <<EOF
 🆕 本次更新内容：
-- 移除 PPPoE 相关模块（ppp-mod-pppoe、kmod-pppoe、ppp）
-- 适配旁路由模式（DHCP 自动获取上级 IP）
-- 新增插件：
-  - luci-app-docker
-  - luci-app-ttyd
-  - luci-app-filebrowser
+- 移除 PPPoE 拨号模块（ppp、ppp-mod-pppoe）
+- 适配旁路由（DHCP 模式）
 - 自动扩展 eMMC 剩余空间
+- 新增插件：
+  • luci-app-docker
+  • luci-app-ttyd
+  • luci-app-filebrowser
 - 默认密码为空
 EOF
 
 echo "✅ 构建完成！"
-echo "📁 线刷包文件: onecloud-immortalwrt-ext4-emmc-burn.img.xz"
+echo "📁 输出文件: onecloud-immortalwrt-ext4-emmc-burn.img.xz"
 echo "📝 更新说明: release_note/update.txt"
