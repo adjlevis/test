@@ -1,9 +1,9 @@
-name: OneCloud Immortalwrt Auto Build
+name: Onecloud Immortalwrt Build
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 19 * * *'  # UTC 19:00 = 北京时间 03:00 自动构建
+    - cron: '0 19 * * *'  # 每天北京时间 03:00 自动构建
 
 permissions:
   contents: write
@@ -14,69 +14,84 @@ jobs:
 
     defaults:
       run:
-        working-directory: immortalwrt   # ✅ 所有命令默认在 immortalwrt 目录下执行
+        working-directory: immortalwrt
 
     steps:
-      - name: 🧩 Checkout repository
+      # 1️⃣ 检出代码
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🧹 Clean old release folder
+      # 2️⃣ 准备环境
+      - name: Prepare build environment
         run: |
-          rm -rf release || true
-          mkdir -p release
-
-      - name: ⚙️ Prepare environment
-        run: |
-          chmod +x docker-build.sh build.sh
+          sed -i 's/\r$//' build.sh docker-build.sh || true
+          chmod +x build.sh docker-build.sh
           mkdir -p bin files
-          sudo chmod -R 777 bin files files build.sh docker-build.sh
+          sudo chmod -R 777 bin files
 
-      - name: 🐋 Pull ImmortalWrt ImageBuilder
+      # 3️⃣ 拉取镜像构建
+      - name: Pull ImmortalWrt ImageBuilder
         run: docker pull immortalwrt/imagebuilder:armsr-armv7-openwrt-24.10
 
-      - name: 🏗️ Build firmware
+      # 4️⃣ 编译固件
+      - name: Build firmware
         run: ./docker-build.sh
 
-      - name: 🕒 Get Beijing Time
+      # 5️⃣ 获取北京时间
+      - name: Get Beijing Time
         id: time
         run: |
           export TZ=Asia/Shanghai
           echo "datetime=$(date '+%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
           echo "datetime_readable=$(date '+%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_OUTPUT
 
-      - name: 📝 List built files
-        id: list_files
+      # 6️⃣ 查找目标固件文件（线刷包）
+      - name: Find firmware
+        id: find_file
         run: |
-          {
-            echo 'files<<EOF'
-            ls -1 bin/ | grep -E 'onecloud-.*\.img\.xz' || echo "无固件文件"
-            echo 'EOF'
-          } >> $GITHUB_OUTPUT
+          FILE_PATH=$(find bin/targets -type f -name "onecloud-immortalwrt-ext4-emmc-burn.img.xz" | head -n 1)
+          echo "file_path=$FILE_PATH" >> $GITHUB_OUTPUT
+          if [ -z "$FILE_PATH" ]; then
+            echo "❌ 没找到 onecloud-immortalwrt-ext4-emmc-burn.img.xz"
+            exit 1
+          fi
 
-      - name: 🚀 Publish to GitHub Release
+      # 7️⃣ 压缩源码归档
+      - name: Archive source code
+        run: |
+          cd ..
+          tar -czf immortalwrt-source-${{ steps.time.outputs.datetime }}.tar.gz immortalwrt
+
+      # 8️⃣ 创建 Release
+      - name: Publish to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: Onecloud-Immortalwrt-${{ steps.time.outputs.datetime }}
-          name: "OneCloud ImmortalWrt 固件自动构建"
+          name: "Onecloud Immortalwrt 更新版"
           body: |
-            ✅ OneCloud 固件构建完成！
+            ✅ Onecloud Immortalwrt 自动构建完成！
 
-            - 构建时间（北京时间）：${{ steps.time.outputs.datetime_readable }}
-            - 构建编号：${{ github.run_number }}
+            - 内核版本：24.10
+            - 发布时间（北京时间）：${{ steps.time.outputs.datetime_readable }}
 
-            本次更新内容：
-            ```
-            $(cat release_note/update.txt)
-            ```
+            📦 本次更新内容：
+            - 新增功能或插件请在构建脚本中描述（build.sh）
+            - 默认登录密码：空密码（root 直接回车）
+            - 仅提供线刷包 + 源码压缩包
 
-            💾 固件文件：
-            ${{ steps.list_files.outputs.files }}
-          files: immortalwrt/bin/onecloud-immortalwrt-ext4-emmc-burn.img.xz
+            💾 文件说明：
+            - onecloud-immortalwrt-ext4-emmc-burn.img.xz ：线刷包
+            - immortalwrt-source-${{ steps.time.outputs.datetime }}.tar.gz ：源码归档
+          files: |
+            ${{ steps.find_file.outputs.file_path }}
+            ../immortalwrt-source-${{ steps.time.outputs.datetime }}.tar.gz
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🧽 Clean old releases (keep latest 1)
+      # 9️⃣ 仅保留最新 1 个 Release
+      - name: Delete older releases
+        if: github.ref == 'refs/heads/main'
         uses: dev-drprasad/delete-older-releases@v0.3.3
         with:
           repo: ${{ github.repository }}
