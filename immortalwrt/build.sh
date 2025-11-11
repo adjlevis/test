@@ -13,7 +13,7 @@ PACKAGES="$PACKAGES curl"
 PACKAGES="$PACKAGES luci-i18n-base-zh-cn"
 PACKAGES="$PACKAGES luci-i18n-firewall-zh-cn"
 PACKAGES="$PACKAGES luci-i18n-package-manager-zh-cn"
-PACKAGES="$PACKAGES luci luci-app-opkg luci-app-docker luci-app-ttyd luci-app-filebrowser "
+PACKAGES="$PACKAGES luci luci-app-opkg luci-app-docker luci-app-ttyd luci-app-filebrowser"
 
 # 根分区大小（单位 MB）
 ROOTFS_PARTSIZE="512"
@@ -78,10 +78,9 @@ echo "🎉 构建完成！镜像已包含以下自定义功能："
 echo " - 默认 IP: 192.168.2.2"
 echo " - root 密码为空（直接登录）"
 echo " - 自动扩展 overlay 分区（首次启动自动执行）"
-echo " - 预装插件: luci、docker、ttyd、filebrowser、 等"
+echo " - 预装插件: luci、docker、ttyd、filebrowser、等"
 
-# 假设 build.sh 最终生成了 ext4-combined-efi.img.gz
-# 查找刚生成的文件
+# === 查找刚生成的 ext4-combined-efi 镜像 ===
 SRC_IMG=$(find bin/targets -type f -name "*ext4-combined-efi.img.gz" | head -n 1)
 
 if [ -z "$SRC_IMG" ]; then
@@ -89,9 +88,8 @@ if [ -z "$SRC_IMG" ]; then
     exit 1
 fi
 
-# 复制并改名为 workflow 能识别的文件名（保持 .gz 后缀即可）
+# === 复制并改名为 workflow 能识别的文件名（保持 .gz 后缀即可） ===
 DST_IMG=$(dirname "$SRC_IMG")/onecloud-immortalwrt-ext4-emmc-burn.img.xz
 cp "$SRC_IMG" "$DST_IMG"
 
 echo "✅ 已生成 workflow 可识别的文件：$DST_IMG"
-
