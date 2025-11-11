@@ -49,10 +49,10 @@ jobs:
       - name: Find firmware
         id: find_file
         run: |
-          FILE_PATH=$(find bin/targets/armsr/armv7 -type f -name "onecloud-immortalwrt-ext4-emmc-burn.img.xz" | head -n 1)
+          FILE_PATH=$(find bin/targets/armsr/armv7 -type f -name "onecloud-immortalwrt-ext4-emmc-burn.img.gz" | head -n 1)
           echo "file_path=$FILE_PATH" >> $GITHUB_OUTPUT
           if [ -z "$FILE_PATH" ]; then
-            echo "❌ 没找到 onecloud-immortalwrt-ext4-emmc-burn.img.xz"
+            echo "❌ 没找到 onecloud-immortalwrt-ext4-emmc-burn.img.gz"
             exit 1
           fi
 
@@ -80,7 +80,7 @@ jobs:
             - 仅提供线刷包 + 源码压缩包
 
             💾 文件说明：
-            - onecloud-immortalwrt-ext4-emmc-burn.img.xz ：线刷包
+            - onecloud-immortalwrt-ext4-emmc-burn.img.gz ：线刷包（可直接用 USB Burning Tool 烧录）
             - immortalwrt-source-${{ steps.time.outputs.datetime }}.tar.gz ：源码归档
           files: |
             ${{ steps.find_file.outputs.file_path }}
